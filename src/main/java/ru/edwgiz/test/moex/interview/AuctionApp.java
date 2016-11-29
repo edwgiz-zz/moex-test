@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.text.ParseException;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 import static java.lang.Integer.parseInt;
@@ -23,58 +22,49 @@ public final class AuctionApp {
     private static final BigDecimal HUNDRED = new BigDecimal(100);
 
     public static void main(String[] args) throws IOException {
+        final Auction a = new Auction();
+        readStdin(a);
+        Auction.DealResult deal = a.deal();
+        if (deal == null) {
+            out.println("0 n/a");
+        } else {
+            out.print(deal.getAmount());
+            out.print(' ');
+            BigDecimal price = new BigDecimal(deal.getPrice()).setScale(2, HALF_UP).divide(HUNDRED, HALF_UP);
+            out.println(price);
+        }
+        out.println();
+    }
+
+    private static void readStdin(Auction a) throws IOException {
         BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
-        Auction a = null;
-        String l;
-        while ((l = r.readLine()) != null) {
-            l = l.trim();
-            try {
-                if (Objects.equals("INPUT:", l)) {
-                    a = new Auction();
-                    continue;
-                } else if (a != null) {
-                    if (Objects.equals("OUTPUT:", l)) {
-                        Auction.DealResult deal = a.deal();
-                        a = null;
-                        if (deal == null) {
-                            out.println("0 n/a");
-                        } else {
-                            out.print(deal.getAmount());
-                            out.print(' ');
-                            BigDecimal price = new BigDecimal(deal.getPrice()).setScale(2, HALF_UP).divide(HUNDRED, HALF_UP);
-                            out.println(price);
-                        }
-                        out.println();
-                        continue;
-                    } else {
-                        switch (l.charAt(0)) {
-                            case 'B':
-                                onBidRow(l, a::buy);
-                                continue;
-                            case 'S':
-                                onBidRow(l, a::sell);
-                                continue;
-                        }
-                    }
+        try {
+            String l;
+            while ((l = r.readLine()) != null) {
+                l = l.trim();
+                if (l.isEmpty()) {
+                    break;
                 }
-                err.println("Unexpected line: '" + l + '\'');
-            } catch (ParseException ex) {
-                err.println(ex.getMessage());
+                switch (l.charAt(0)) {
+                    case 'B':
+                        onBidRow(l, a::buy);
+                        continue;
+                    case 'S':
+                        onBidRow(l, a::sell);
+                }
             }
-            out.println("Try again");
-            out.println();
-            a = null;
+        } catch (ParseException ex) {
+            err.println(ex.getMessage());
         }
     }
 
     private static void onBidRow(String l, IntIntProcedure consumer) throws ParseException {
-
         String[] values = SPACE_SPLITTING_PATTERN.split(l);
-        if(values.length == 3) {
+        if (values.length == 3) {
             int amount = parseInt(values[1]);
             BigDecimal price = new BigDecimal(values[2]);
-            if(amount > 0 && amount <= 1000
-                    && ONE.compareTo(price) < 0 && HUNDRED.compareTo(price) >= 0) {
+            if (amount > 0 && amount <= 1000
+                    && ONE.compareTo(price) <= 0 && HUNDRED.compareTo(price) >= 0) {
 
                 consumer.value(amount, price.multiply(HUNDRED).intValue());
                 return;

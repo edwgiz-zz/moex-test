@@ -58,7 +58,7 @@ public final class Auction {
     public DealResult deal() {
         removeNonIntersectingBids(); // optimization: exclude unmatched bids from sorting
 
-        if (this.buyBids.getMinPrice() <= buyBids.getMaxPrice()) {
+        if (this.sellBids.getMinPrice() <= this.sellBids.getMaxPrice()) {
 
             // get buy bids and their total amount
             ShortShortPair[] buyBids;
