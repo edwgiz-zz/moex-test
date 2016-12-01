@@ -1,6 +1,6 @@
 package ru.edwgiz.test.moex.interview;
 
-import com.gs.collections.api.tuple.primitive.ShortShortPair;
+import com.gs.collections.api.tuple.primitive.ShortIntPair;
 import com.gs.collections.impl.set.mutable.primitive.IntHashSet;
 
 import java.util.Comparator;
@@ -20,7 +20,7 @@ import static java.util.Arrays.sort;
  */
 public final class Auction {
 
-    private static final Comparator<ShortShortPair> PRICE_COMPARATOR = (o1, o2) -> compare(o1.getOne(), o2.getOne());
+    private static final Comparator<ShortIntPair> PRICE_COMPARATOR = (o1, o2) -> compare(o1.getOne(), o2.getOne());
 
 
     private BidsSet buyBids;
@@ -39,7 +39,7 @@ public final class Auction {
      * @param price  price
      */
     public void buy(int amount, int price) {
-        buyBids.append((short) price, (short) amount);
+        buyBids.append(price, amount);
     }
 
     /**
@@ -49,37 +49,38 @@ public final class Auction {
      * @param price  price
      */
     public void sell(int amount, int price) {
-        sellBids.append((short) price, (short) amount);
+        sellBids.append(price, amount);
     }
 
     /**
      * @return {@code null} when no possible deals or successful deal result
      */
     public DealResult deal() {
+        if (this.sellBids.isEmpty() || this.buyBids.isEmpty()
+                || this.buyBids.getMaxPrice() < this.sellBids.getMinPrice()) {
+            return null;
+        }
+
         removeNonIntersectingBids(); // optimization: exclude unmatched bids from sorting
 
-        if (this.sellBids.getMinPrice() <= this.sellBids.getMaxPrice()) {
-
-            // get buy bids and their total amount
-            ShortShortPair[] buyBids;
-            int totalBuyAmount;// int is enough bids count (1e6) multiplied on amount per bid (1e3)
-            {
-                Map.Entry<ShortShortPair[], Integer> bidsWithToTotalAmount = this.buyBids.toArrayWithToTotalAmount();
-                this.buyBids = null;// let out to gc
-                buyBids = bidsWithToTotalAmount.getKey();
-                totalBuyAmount = bidsWithToTotalAmount.getValue();
-            }
-
-            // get sell bids
-            ShortShortPair[] sellBids = this.sellBids.toArrayWithToTotalAmount().getKey();
-            this.sellBids = null;// let out to gc
-
-            sort(buyBids, PRICE_COMPARATOR);
-            sort(sellBids, PRICE_COMPARATOR);
-
-            return deal(sellBids, buyBids, totalBuyAmount);
+        // get buy bids and their total amount
+        ShortIntPair[] buyBids;
+        int totalBuyAmount;// int is enough bids count (1e6) multiplied on amount per bid (1e3)
+        {
+            Map.Entry<ShortIntPair[], Integer> bidsWithToTotalAmount = this.buyBids.toArrayWithToTotalAmount();
+            this.buyBids = null;// let out to gc
+            buyBids = bidsWithToTotalAmount.getKey();
+            totalBuyAmount = bidsWithToTotalAmount.getValue();
         }
-        return null;
+
+        // get sell bids
+        ShortIntPair[] sellBids = this.sellBids.toArrayWithToTotalAmount().getKey();
+        this.sellBids = null;// let out to gc
+
+        sort(buyBids, PRICE_COMPARATOR);
+        sort(sellBids, PRICE_COMPARATOR);
+
+        return deal(sellBids, buyBids, totalBuyAmount);
     }
 
     /**
@@ -101,7 +102,7 @@ public final class Auction {
      * @param totalBuyAmount total amount of buy bids
      * @return successful deal result
      */
-    private DealResult deal(ShortShortPair[] sellBids, ShortShortPair[] buyBids, int totalBuyAmount) {
+    private DealResult deal(ShortIntPair[] sellBids, ShortIntPair[] buyBids, int totalBuyAmount) {
         IntHashSet extremaPrices = new IntHashSet();
         int totalSellAmount = 0;
         int maxDealAmount = 0;
@@ -112,7 +113,7 @@ public final class Auction {
         BOTH_BIDS_SLIDING:
         for (; ; ) {// slide over sell and buy bids
             for (; ; ) {
-                ShortShortPair sell = sellBids[sellIndex];
+                ShortIntPair sell = sellBids[sellIndex];
                 if (sell.getOne() <= buyPrice) {
                     // summarize sell bids until buy price will be reached
                     totalSellAmount += sell.getTwo();
@@ -138,7 +139,7 @@ public final class Auction {
             }
 
             for (; ; ) {// summarize buy bids until sell price will be reached
-                ShortShortPair buy = buyBids[buyIndex];
+                ShortIntPair buy = buyBids[buyIndex];
                 buyPrice = buy.getOne();// set limit for next summarizing of sell bids
                 if (buyPrice >= sellPrice) {
                     break;

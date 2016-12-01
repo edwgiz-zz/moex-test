@@ -2,8 +2,8 @@ package ru.edwgiz.test.moex.interview;
 
 import com.gs.collections.api.RichIterable;
 import com.gs.collections.api.iterator.MutableShortIterator;
-import com.gs.collections.api.tuple.primitive.ShortShortPair;
-import com.gs.collections.impl.map.mutable.primitive.ShortShortHashMap;
+import com.gs.collections.api.tuple.primitive.ShortIntPair;
+import com.gs.collections.impl.map.mutable.primitive.ShortIntHashMap;
 
 import java.util.Map;
 
@@ -20,40 +20,56 @@ final class BidsSet {
      * The backing map.
      * Its package-private only for unit testing purposes
      */
-    final ShortShortHashMap m;
-    private short minPrice;
-    private short maxPrice;
+    final ShortIntHashMap m;
+    private int minPrice;
+    private int maxPrice;
 
     BidsSet() {
-        m = new ShortShortHashMap();
+        m = new ShortIntHashMap();
         minPrice = MAX_VALUE;
         maxPrice = MIN_VALUE;
     }
 
-    short append(short price, short amount) {
+    int append(int price, int amount) {
+        if (100 > price || price > 10000) {
+            throw new IllegalArgumentException("Price must be between 1.00 and 100.00");
+        }
+        if (0 > amount || amount > 1000) {
+            throw new IllegalArgumentException("Amount must be between 0 and 1000");
+        }
+
         if(price > maxPrice) {
             maxPrice = price;
         }
         if(price < minPrice) {
             minPrice = price;
         }
-        return m.addToValue(price, amount);
+
+        if(amount > 0) {
+            return m.addToValue((short) price, amount);
+        } else {
+            return 0;
+        }
     }
 
-    short getMinPrice() {
+    int getMinPrice() {
         return minPrice;
     }
 
-    short getMaxPrice() {
+    int getMaxPrice() {
         return maxPrice;
     }
 
-    void removeLesser(short priceLimit) {
+    boolean isEmpty() {
+        return minPrice > maxPrice;
+    }
+
+    void removeLesser(int priceLimit) {
         if(this.minPrice < priceLimit) {
-            short newMinPrice = Short.MAX_VALUE;
+            int newMinPrice = Short.MAX_VALUE;
             MutableShortIterator it = m.keySet().shortIterator();
             while (it.hasNext()) {
-                short price = it.next();
+                int price = it.next();
                 if (price < priceLimit) {
                     it.remove();
                 } else if (newMinPrice > price) {
@@ -67,12 +83,12 @@ final class BidsSet {
         }
     }
 
-    void removeGreater(short priceLimit) {
+    void removeGreater(int priceLimit) {
         if(this.maxPrice > priceLimit) {
-            short newMaxPrice = Short.MIN_VALUE;
+            int newMaxPrice = Short.MIN_VALUE;
             MutableShortIterator it = m.keySet().shortIterator();
             while (it.hasNext()) {
-                short price = it.next();
+                int price = it.next();
                 if(price > priceLimit) {
                     it.remove();
                 } else if (newMaxPrice < price) {
@@ -86,16 +102,16 @@ final class BidsSet {
         }
     }
 
-    Map.Entry<ShortShortPair[], Integer> toArrayWithToTotalAmount() {
+    Map.Entry<ShortIntPair[], Integer> toArrayWithToTotalAmount() {
         int size = 0;
         int totalAmount = 0;// int is enough bids count (1e6) multiplied on amount per bid (1e3)
-        RichIterable<ShortShortPair> view = m.keyValuesView();
-        for (ShortShortPair e : view) {
+        RichIterable<ShortIntPair> view = m.keyValuesView();
+        for (ShortIntPair e : view) {
             size++;
             totalAmount += e.getTwo();
         }
-        ShortShortPair[] result = new ShortShortPair[size];
-        for (ShortShortPair e : view) {
+        ShortIntPair[] result = new ShortIntPair[size];
+        for (ShortIntPair e : view) {
             result[--size] = e;
         }
         return of(result, totalAmount);
